@@ -10,6 +10,7 @@ app = Flask(__name__)
 # ==================================================
 from forms import UserInfoForm
 
+# ▼▼▼【リスト5.13】▼▼▼
 # ユーザー情報：入力
 @app.route('/', methods=['GET','POST'])
 def show_enter():
@@ -19,7 +20,8 @@ def show_enter():
     if request.method == "POST" and form.validate():
         return render_template('result.html', form=form)
     # POST以外と「form.validate()がfalse」
-    return render_template('enter.html', form=form)
+    return render_template('enter2.html', form=form)
+# ▲▲▲【リスト5.13】▲▲▲
 
 # ==================================================
 # 実行
