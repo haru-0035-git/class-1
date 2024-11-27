@@ -1,4 +1,4 @@
-rom flask import Flask, render_template,abort    # 【リスト4.11】
+from flask import Flask, render_template,abort    # 【リスト4.11】
 
 # ==================================================
 # インスタンス生成
