@@ -1,0 +1,107 @@
+@startuml aaa
+
+' ------------------------------------------------------
+' 講師マスタ
+' ------------------------------------------------------
+entity "講師マスタ" as teacher_master {
+    +講師ID : INT
+    +氏名 : VARCHAR(255)
+}
+
+' ------------------------------------------------------
+' 生徒マスタ
+' ------------------------------------------------------
+entity "生徒マスタ" as student_master {
+    +生徒ID : INT
+    +学籍番号 : INT
+    +ニックネーム : VARCHAR(255)
+    +ポイント : INT
+    +現在座標 : VARCHAR(100)
+}
+
+' ------------------------------------------------------
+' 履歴トランザクション
+' ------------------------------------------------------
+entity "履歴トランザクション" as transaction_history {
+    +履歴ID : INT
+    +生徒ID : INT
+    +課題ID : INT
+}
+
+' ------------------------------------------------------
+' 科目マスタ
+' ------------------------------------------------------
+entity "科目マスタ" as subject_master {
+    +科目ID : INT
+    +科目名 : VARCHAR(255)
+    +開始時間 : DATETIME
+    +終了時間 : DATETIME
+    +登校人数 : INT
+    +オンライン人数 : INT
+    +講師ID : INT
+}
+
+' ------------------------------------------------------
+' 課題トランザクション
+' ------------------------------------------------------
+entity "課題トランザクション" as assignment_transaction {
+    +課題ID : INT
+    +科目ID : INT
+    +課題内容 : TEXT
+}
+
+' ------------------------------------------------------
+' 課題結果トランザクション
+' ------------------------------------------------------
+entity "課題結果トランザクション" as assignment_result_transaction {
+    +課題結果ID : INT
+    +科目ID : INT
+    +課題ID : INT
+    +生徒ID : INT
+    +得点 : INT
+    +受験日時 : DATETIME
+}
+
+' ------------------------------------------------------
+' 商品マスタ
+' ------------------------------------------------------
+entity "商品マスタ" as product_master {
+    +商品ID : INT
+    +商品名 : VARCHAR(255)
+}
+
+' ------------------------------------------------------
+' ショップマスタ
+' ------------------------------------------------------
+entity "ショップマスタ" as shop_master {
+    +店ID : INT
+    +店名 : VARCHAR(255)
+}
+
+' ------------------------------------------------------
+' 販売履歴トランザクション
+' ------------------------------------------------------
+entity "販売履歴トランザクション" as sales_transaction {
+    +販売履歴ID : INT
+    +店ID : INT
+    +商品ID : INT
+    +購入生徒ID : INT
+    +購入日時 : DATETIME
+}
+
+' ------------------------------------------------------
+' テーブル間の関係
+' ------------------------------------------------------
+
+teacher_master --o subject_master : 講師ID
+student_master --o transaction_history : 生徒ID
+student_master --o assignment_result_transaction : 生徒ID
+student_master --o sales_transaction : 購入生徒ID
+subject_master --o assignment_transaction : 科目ID
+subject_master --o assignment_result_transaction : 科目ID
+assignment_transaction --o assignment_result_transaction : 課題ID
+assignment_transaction --o transaction_history : 課題ID
+product_master --o sales_transaction : 商品ID
+shop_master --o sales_transaction : 店ID
+
+@enduml
