@@ -1,0 +1,95 @@
+import Foundation
+import AVFoundation
+import CoreLocation
+import Combine
+
+class ViewModel: NSObject, ObservableObject, AVCapturePhotoCaptureDelegate, CLLocationManagerDelegate {
+    @Published var restaurants: [Restaurant]? = nil
+    private let apiKey = "YOUR_HOTPEPPER_API_KEY" // ホットペッパーAPIキー
+    private var photoOutput = AVCapturePhotoOutput()
+    private let locationManager = CLLocationManager()
+    @Published var captureSession = AVCaptureSession()
+    private var currentLocation: CLLocation? = nil
+    
+    override init() {
+        super.init()
+        locationManager.delegate = self
+    }
+    
+    // カメラをスタート
+    func startCamera() {
+        captureSession.sessionPreset = .photo
+        
+        guard let backCamera = AVCaptureDevice.default(for: .video) else {
+            print("カメラが利用できません")
+            return
+        }
+        
+        do {
+            let input = try AVCaptureDeviceInput(device: backCamera)
+            if captureSession.canAddInput(input) {
+                captureSession.addInput(input)
+            }
+            if captureSession.canAddOutput(photoOutput) {
+                captureSession.addOutput(photoOutput)
+            }
+        } catch {
+            print("カメラ設定に失敗しました: \(error.localizedDescription)")
+        }
+        
+        captureSession.startRunning()
+    }
+    
+    // 写真を撮影
+    func capturePhoto() {
+        let settings = AVCapturePhotoSettings()
+        photoOutput.capturePhoto(with: settings, delegate: self)
+    }
+    
+    // 撮影完了後の処理
+    func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
+        if let error = error {
+            print("写真撮影に失敗しました: \(error.localizedDescription)")
+            return
+        }
+        fetchNearbyRestaurants() // 撮影後に飲食店情報を取得
+    }
+    
+    // 位置情報の許可をリクエスト
+    func requestLocationPermission() {
+        locationManager.requestWhenInUseAuthorization()
+        locationManager.startUpdatingLocation()
+    }
+    
+    // 位置情報の更新
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        currentLocation = locations.last
+    }
+    
+    // ホットペッパーAPIを使って近くの飲食店を取得
+    func fetchNearbyRestaurants() {
+        guard let location = currentLocation else { return }
+        let latitude = location.coordinate.latitude
+        let longitude = location.coordinate.longitude
+        
+        let urlString = "https://webservice.recruit.co.jp/hotpepper/gourmet/v1/?key=\(apiKey)&lat=\(latitude)&lng=\(longitude)&range=3&count=10&format=json"
+        guard let url = URL(string: urlString) else { return }
+        
+        URLSession.shared.dataTask(with: url) { data, response, error in
+            if let error = error {
+                print("エラー: \(error.localizedDescription)")
+                return
+            }
+            
+            guard let data = data else { return }
+            do {
+                let result = try JSONDecoder().decode(HotPepperResponse.self, from: data)
+                DispatchQueue.main.async {
+                    self.restaurants = result.results.shop
+                }
+            } catch {
+                print("JSONの解析に失敗しました: \(error.localizedDescription)")
+            }
+        }.resume()
+    }
+}
