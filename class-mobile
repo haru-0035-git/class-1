@@ -1,0 +1,123 @@
+import UIKit
+import CoreLocation
+
+class ViewController: UIViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate, CLLocationManagerDelegate {
+
+    let imageView = UIImageView()              // 写真表示用
+    let resultsTextView = UITextView()         // 飲食店リスト表示用
+    let locationManager = CLLocationManager()  // 位置情報取得用
+    var currentLocation: CLLocation?           // 現在の位置
+    let apiKey = "http://webservice.recruit.co.jp/hotpepper/gourmet/v1/"      // ホットペッパーAPIキーを入力
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        setupUI()
+        setupLocationManager()
+    }
+
+    // UIセットアップ
+    func setupUI() {
+        view.backgroundColor = .white
+        
+        // カメラボタン
+        let cameraButton = UIButton(frame: CGRect(x: 50, y: 50, width: 150, height: 50))
+        cameraButton.setTitle("写真を撮る", for: .normal)
+        cameraButton.backgroundColor = .systemBlue
+        cameraButton.addTarget(self, action: #selector(openCamera), for: .touchUpInside)
+        view.addSubview(cameraButton)
+        
+        // UIImageView
+        imageView.frame = CGRect(x: 50, y: 120, width: 300, height: 300)
+        imageView.contentMode = .scaleAspectFit
+        view.addSubview(imageView)
+        
+        // 結果表示用TextView
+        resultsTextView.frame = CGRect(x: 50, y: 440, width: 300, height: 300)
+        resultsTextView.isEditable = false
+        resultsTextView.text = "近くの飲食店情報がここに表示されます"
+        resultsTextView.layer.borderWidth = 1
+        resultsTextView.layer.borderColor = UIColor.gray.cgColor
+        resultsTextView.layer.cornerRadius = 5
+        view.addSubview(resultsTextView)
+    }
+
+    // 位置情報マネージャーセットアップ
+    func setupLocationManager() {
+        locationManager.delegate = self
+        locationManager.requestWhenInUseAuthorization()
+        locationManager.startUpdatingLocation()
+    }
+    
+    // カメラを開く
+    @objc func openCamera() {
+        let picker = UIImagePickerController()
+        picker.sourceType = .camera
+        picker.delegate = self
+        present(picker, animated: true, completion: nil)
+    }
+
+    // 写真が選択された時
+    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+        if let image = info[.originalImage] as? UIImage {
+            imageView.image = image
+        }
+        picker.dismiss(animated: true) {
+            self.fetchNearbyRestaurants() // 写真を撮った後に飲食店情報を取得
+        }
+    }
+
+    // 位置情報が更新された時
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        currentLocation = locations.last
+    }
+
+    // 近隣の飲食店情報を取得
+    func fetchNearbyRestaurants() {
+        guard let location = currentLocation else {
+            resultsTextView.text = "位置情報が取得できませんでした"
+            return
+        }
+
+        let latitude = location.coordinate.latitude
+        let longitude = location.coordinate.longitude
+        
+        // ホットペッパーAPIのエンドポイント
+        let urlString = "https://webservice.recruit.co.jp/hotpepper/gourmet/v1/?key=\(apiKey)&lat=\(latitude)&lng=\(longitude)&range=3&count=10&format=json"
+        guard let url = URL(string: urlString) else { return }
+
+        // APIリクエスト
+        URLSession.shared.dataTask(with: url) { data, response, error in
+            if let error = error {
+                DispatchQueue.main.async {
+                    self.resultsTextView.text = "エラー: \(error.localizedDescription)"
+                }
+                return
+            }
+
+            guard let data = data else { return }
+            do {
+                // JSONデコード
+                if let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
+                   let results = json["results"] as? [String: Any],
+                   let shops = results["shop"] as? [[String: Any]] {
+                    
+                    var restaurantList = "近くの飲食店:\n"
+                    for (index, shop) in shops.enumerated() {
+                        if let name = shop["name"] as? String,
+                           let address = shop["address"] as? String {
+                            restaurantList += "\(index + 1). \(name)\n住所: \(address)\n\n"
+                        }
+                    }
+                    
+                    DispatchQueue.main.async {
+                        self.resultsTextView.text = restaurantList
+                    }
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    self.resultsTextView.text = "データの解析に失敗しました"
+                }
+            }
+        }.resume()
+    }
+}
