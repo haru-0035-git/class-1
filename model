@@ -1,8 +1,0 @@
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView()
-    }
-}
-
-
-faeac792a8c5d4a6
